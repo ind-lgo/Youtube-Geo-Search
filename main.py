@@ -3,7 +3,7 @@ import googleapiclient.discovery
 # API information
 api_service_name = "youtube"
 api_version = "v3"
-DEVELOPER_KEY = 'AIzaSyA87resrUfNNAwZAqeRdlQhriAhj9w06Lo'
+DEVELOPER_KEY = 'ENV_KEY'
 # API client
 youtube = googleapiclient.discovery.build(
         api_service_name, api_version, developerKey = DEVELOPER_KEY)
