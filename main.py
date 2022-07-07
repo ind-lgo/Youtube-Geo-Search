@@ -1,54 +1,42 @@
-from telethon import TelegramClient, events, sync
-from telethon.tl.types import InputChannel
-from web3 import Web3
-import yaml
-import sys
-import os
-from threading import Thread
 
+import googleapiclient.discovery
+# API information
+api_service_name = "youtube"
+api_version = "v3"
+DEVELOPER_KEY = 'AIzaSyA87resrUfNNAwZAqeRdlQhriAhj9w06Lo'
+# API client
+youtube = googleapiclient.discovery.build(
+        api_service_name, api_version, developerKey = DEVELOPER_KEY)
 
+request = youtube.search().list(
+                        part="id,snippet",
+                        type='video',
+                        publishedAfter='2012-01-01T11:10:04Z',
+                        publishedBefore='2012-12-31T11:10:04Z',
+                        location="52.308056,  4.764167",
+                        locationRadius='1km',
+                        maxResults=25,
+                        fields="nextPageToken,items(id(videoId),snippet(publishedAt,channelId,channelTitle,title,description))"
+                )
 
-def getBalanceAndPercentFromAccount():
-    balance = Web3(Web3.HTTPProvider("https://bsc-dataseed.binance.org/")).eth.get_balance(config["BNB_ADDRESS"]) / (10**18)
-    insert = round(balance / 100 * config["Percent_Amount_for_Buy"], 5)
-    print("Current Amount for buy", insert, "BNB is", config["Percent_Amount_for_Buy"],"%")
-    return insert
-
-
-def Threader(word):
-    T = f'cd .. && python3 Sniper.py -t {word} -a {getBalanceAndPercentFromAccount()} -cmt -lc -cc -hp -tp {config["TP"]} -dsec -sl {config["SL"]} -tsl {config["TSL"]}'
-    print(T)
-    os.system(T)
-
-
-def start(config):
-    getBalanceAndPercentFromAccount()
-    client = TelegramClient(config["session_name"], config["session_api"], config["session_api_hash"])
-    client.start()
-    channels_entities = []
-    for d in client.iter_dialogs():
-        if d.name in config["channel_names"] or d.entity.id in config["channel_ids"]:
-            channels_entities.append(InputChannel(d.entity.id, d.entity.access_hash))
-
-    if not channels_entities:
-        print(f"Could not find any input channels in the user's dialogs")
-        sys.exit(1)
+nextPageToken = request.get('nextPageToken')
+while ('nextPageToken' in request):
+        nextPage = youtube.search().list(
         
-    print(f"Listening on {len(channels_entities)} channels.")
+        part='id,snippet',
+        type='video',
+        relevanceLanguage='en',
+        maxResults=25,
+         publishedAfter='2012-01-01T11:10:04Z',
+                        publishedBefore='2012-12-31T11:10:04Z',
+                        location="52.308056,  4.764167",
+                        locationRadius='1km',
+        pageToken=nextPageToken
+        ).execute()
+        request['items'] = request['items'] + nextPage['items']
 
-    @client.on(events.NewMessage(chats=channels_entities))
-    async def handler(event):
-        parsed_response = event.message.message
-        msg_splitted = parsed_response.split()
-        for word in msg_splitted:
-            if word[:2] == "0x":
-                if Web3.isAddress(word):     
-                    Thread(target=Threader,daemon=True, args=(word,)).start()
-    client.run_until_disconnected()
-
-
-
-if __name__ == "__main__":
-    with open("config.yml", 'rb') as f:
-        config = yaml.safe_load(f)
-    start(config)
+        if 'nextPageToken' not in nextPage:
+             request.pop('nextPageToken', None)
+        else:
+            nextPageToken = nextPage['nextPageToken']
+            print(request)
